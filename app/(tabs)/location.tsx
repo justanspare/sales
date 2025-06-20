@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Navigation, Clock, CircleCheck as CheckCircle, Play, Square } from 'lucide-react-native';
+import { MapPin, Navigation, Clock, CircleCheck as CheckCircle, Play, Square, Loader, AlertTriangle } from 'lucide-react-native';
 import * as Location from 'expo-location';
 
 interface LocationData {
@@ -9,11 +9,19 @@ interface LocationData {
   longitude: number;
   timestamp: number;
   accuracy?: number;
+  address?: string;
+}
+
+interface LocationError {
+  code: string;
+  message: string;
 }
 
 export default function LocationScreen() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<LocationError | null>(null);
   const [currentTask, setCurrentTask] = useState({
     id: '1',
     orderId: '#12345',
@@ -21,99 +29,211 @@ export default function LocationScreen() {
     address: '123 Main St, Downtown',
     startTime: null as Date | null,
   });
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+  const reverseGeocodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     requestLocationPermission();
+    
+    // Cleanup on unmount
+    return () => {
+      stopLocationTracking();
+      if (reverseGeocodeTimeout.current) {
+        clearTimeout(reverseGeocodeTimeout.current);
+      }
+    };
   }, []);
 
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'web') {
-      // Web geolocation API
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setLocation({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              timestamp: Date.now(),
-              accuracy: position.coords.accuracy,
-            });
-          },
-          (error) => {
-            setErrorMsg('Location access denied or unavailable');
-          }
-        );
-      } else {
-        setErrorMsg('Geolocation not supported by this browser');
-      }
-    } else {
-      // Native platform location
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Location permission denied');
-          return;
-        }
+    setIsLoading(true);
+    setError(null);
 
-        const currentLocation = await Location.getCurrentPositionAsync({});
-        setLocation({
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude,
-          timestamp: Date.now(),
-          accuracy: currentLocation.coords.accuracy,
+    try {
+      // Check if location services are enabled
+      const isLocationEnabled = await Location.hasServicesEnabledAsync();
+      if (!isLocationEnabled) {
+        setError({
+          code: 'LOCATION_DISABLED',
+          message: 'Location services are disabled. Please enable them in your device settings.'
         });
-      } catch (error) {
-        setErrorMsg('Error getting location');
+        setIsLoading(false);
+        return;
       }
+
+      // Request foreground permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError({
+          code: 'PERMISSION_DENIED',
+          message: 'Location permission denied. Please grant location access to use this feature.'
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Get initial location
+      await getCurrentLocation();
+    } catch (err) {
+      console.error('Permission request error:', err);
+      setError({
+        code: 'PERMISSION_ERROR',
+        message: 'Failed to request location permissions. Please try again.'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const startTracking = () => {
-    setIsTracking(true);
-    setCurrentTask(prev => ({ ...prev, startTime: new Date() }));
-    
-    if (Platform.OS === 'web') {
-      // Web location tracking
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            timestamp: Date.now(),
-            accuracy: position.coords.accuracy,
-          });
-        },
-        (error) => {
-          console.error('Location tracking error:', error);
-        },
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
-      );
+  const getCurrentLocation = async () => {
+    try {
+      setIsLoading(true);
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        maximumAge: 10000, // Use cached location if less than 10 seconds old
+      });
+
+      const locationData: LocationData = {
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        timestamp: Date.now(),
+        accuracy: currentLocation.coords.accuracy || undefined,
+      };
+
+      setLocation(locationData);
       
-      // Store watchId for cleanup
-      return () => navigator.geolocation.clearWatch(watchId);
-    } else {
-      // Native location tracking would go here
-      Location.watchPositionAsync(
+      // Get address for the location
+      await reverseGeocode(locationData.latitude, locationData.longitude);
+    } catch (err) {
+      console.error('Get location error:', err);
+      setError({
+        code: 'LOCATION_ERROR',
+        message: 'Failed to get current location. Please check your GPS signal.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const reverseGeocode = async (latitude: number, longitude: number) => {
+    try {
+      // Clear any existing timeout
+      if (reverseGeocodeTimeout.current) {
+        clearTimeout(reverseGeocodeTimeout.current);
+      }
+
+      // Debounce reverse geocoding to avoid too many API calls
+      reverseGeocodeTimeout.current = setTimeout(async () => {
+        try {
+          const addresses = await Location.reverseGeocodeAsync({
+            latitude,
+            longitude,
+          });
+
+          if (addresses && addresses.length > 0) {
+            const address = addresses[0];
+            const formattedAddress = formatAddress(address);
+            
+            setLocation(prev => prev ? {
+              ...prev,
+              address: formattedAddress
+            } : null);
+          }
+        } catch (geocodeError) {
+          console.warn('Reverse geocoding failed:', geocodeError);
+          // Don't set error for geocoding failures, just log them
+          setLocation(prev => prev ? {
+            ...prev,
+            address: 'Address unavailable'
+          } : null);
+        }
+      }, 1000); // Wait 1 second before geocoding
+    } catch (err) {
+      console.warn('Reverse geocode setup error:', err);
+    }
+  };
+
+  const formatAddress = (address: Location.LocationGeocodedAddress): string => {
+    const parts = [];
+    
+    if (address.name) parts.push(address.name);
+    if (address.street) parts.push(address.street);
+    if (address.district) parts.push(address.district);
+    if (address.city) parts.push(address.city);
+    if (address.region) parts.push(address.region);
+    
+    return parts.length > 0 ? parts.join(', ') : 'Unknown location';
+  };
+
+  const startLocationTracking = async () => {
+    try {
+      setError(null);
+      
+      // Request background permissions for continuous tracking
+      const { status } = await Location.requestBackgroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Background Location',
+          'Background location permission is recommended for continuous tracking, but foreground tracking will still work.',
+          [{ text: 'OK' }]
+        );
+      }
+
+      setIsTracking(true);
+      setCurrentTask(prev => ({ ...prev, startTime: new Date() }));
+
+      // Start watching position with high accuracy
+      locationSubscription.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 10000,
-          distanceInterval: 10,
+          timeInterval: 5000, // Update every 5 seconds
+          distanceInterval: 10, // Update every 10 meters
         },
         (newLocation) => {
-          setLocation({
+          const locationData: LocationData = {
             latitude: newLocation.coords.latitude,
             longitude: newLocation.coords.longitude,
             timestamp: Date.now(),
-            accuracy: newLocation.coords.accuracy,
-          });
+            accuracy: newLocation.coords.accuracy || undefined,
+          };
+
+          setLocation(prev => ({
+            ...locationData,
+            address: prev?.address // Keep previous address until new one is geocoded
+          }));
+
+          // Reverse geocode the new location
+          reverseGeocode(locationData.latitude, locationData.longitude);
         }
       );
+
+      Alert.alert('Tracking Started', 'Location tracking is now active. Your position will be updated automatically.');
+    } catch (err) {
+      console.error('Start tracking error:', err);
+      setError({
+        code: 'TRACKING_ERROR',
+        message: 'Failed to start location tracking. Please try again.'
+      });
+      setIsTracking(false);
     }
   };
 
-  const stopTracking = () => {
+  const stopLocationTracking = () => {
+    if (locationSubscription.current) {
+      locationSubscription.current.remove();
+      locationSubscription.current = null;
+    }
+    
+    if (reverseGeocodeTimeout.current) {
+      clearTimeout(reverseGeocodeTimeout.current);
+      reverseGeocodeTimeout.current = null;
+    }
+    
     setIsTracking(false);
+  };
+
+  const handleStopTracking = () => {
+    stopLocationTracking();
     Alert.alert(
       'Tracking Stopped',
       'Location tracking has been stopped. Task completed!',
@@ -127,15 +247,17 @@ export default function LocationScreen() {
       return;
     }
 
+    const addressInfo = location.address ? `\nAddress: ${location.address}` : '';
+    
     Alert.alert(
       'Complete Delivery',
-      `Confirm delivery completion at:\nLat: ${location.latitude.toFixed(6)}\nLng: ${location.longitude.toFixed(6)}`,
+      `Confirm delivery completion at:\nLat: ${location.latitude.toFixed(6)}\nLng: ${location.longitude.toFixed(6)}${addressInfo}`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Confirm', 
           onPress: () => {
-            setIsTracking(false);
+            stopLocationTracking();
             Alert.alert('Success', 'Delivery completed successfully!');
           }
         }
@@ -160,21 +282,39 @@ export default function LocationScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const getLocationStatusText = () => {
+    if (isLoading) return 'Finding location...';
+    if (error) return 'Location unavailable';
+    if (isTracking) return 'Tracking active';
+    return 'Ready to track';
+  };
+
+  const getLocationStatusColor = () => {
+    if (isLoading) return '#F59E0B';
+    if (error) return '#EF4444';
+    if (isTracking) return '#10B981';
+    return '#64748B';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Location Tracking</Text>
-        <View style={[styles.statusIndicator, { backgroundColor: isTracking ? '#10B981' : '#64748B' }]}>
+        <View style={[styles.statusIndicator, { backgroundColor: getLocationStatusColor() }]}>
           <View style={styles.statusDot} />
           <Text style={styles.statusText}>
-            {isTracking ? 'TRACKING' : 'OFFLINE'}
+            {getLocationStatusText().toUpperCase()}
           </Text>
         </View>
       </View>
 
-      {errorMsg && (
+      {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{errorMsg}</Text>
+          <AlertTriangle size={20} color="#DC2626" />
+          <View style={styles.errorContent}>
+            <Text style={styles.errorTitle}>Location Error</Text>
+            <Text style={styles.errorText}>{error.message}</Text>
+          </View>
           <TouchableOpacity style={styles.retryButton} onPress={requestLocationPermission}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -205,23 +345,38 @@ export default function LocationScreen() {
       </View>
 
       <View style={styles.locationCard}>
-        <Text style={styles.cardTitle}>Current Location</Text>
+        <View style={styles.locationHeader}>
+          <Text style={styles.cardTitle}>Current Location</Text>
+          {isLoading && <Loader size={20} color="#2563EB" />}
+        </View>
+        
         {location ? (
           <View style={styles.locationInfo}>
-            <View style={styles.coordinateRow}>
-              <Text style={styles.coordinateLabel}>Latitude:</Text>
-              <Text style={styles.coordinateValue}>{location.latitude.toFixed(6)}</Text>
-            </View>
-            <View style={styles.coordinateRow}>
-              <Text style={styles.coordinateLabel}>Longitude:</Text>
-              <Text style={styles.coordinateValue}>{location.longitude.toFixed(6)}</Text>
-            </View>
-            {location.accuracy && (
-              <View style={styles.coordinateRow}>
-                <Text style={styles.coordinateLabel}>Accuracy:</Text>
-                <Text style={styles.coordinateValue}>{Math.round(location.accuracy)}m</Text>
+            {location.address && (
+              <View style={styles.addressSection}>
+                <Text style={styles.addressTitle}>Address</Text>
+                <Text style={styles.addressText}>{location.address}</Text>
               </View>
             )}
+            
+            <View style={styles.coordinatesSection}>
+              <Text style={styles.coordinatesTitle}>Coordinates</Text>
+              <View style={styles.coordinateRow}>
+                <Text style={styles.coordinateLabel}>Latitude:</Text>
+                <Text style={styles.coordinateValue}>{location.latitude.toFixed(6)}</Text>
+              </View>
+              <View style={styles.coordinateRow}>
+                <Text style={styles.coordinateLabel}>Longitude:</Text>
+                <Text style={styles.coordinateValue}>{location.longitude.toFixed(6)}</Text>
+              </View>
+              {location.accuracy && (
+                <View style={styles.coordinateRow}>
+                  <Text style={styles.coordinateLabel}>Accuracy:</Text>
+                  <Text style={styles.coordinateValue}>{Math.round(location.accuracy)}m</Text>
+                </View>
+              )}
+            </View>
+            
             <Text style={styles.lastUpdate}>
               Last updated: {new Date(location.timestamp).toLocaleTimeString()}
             </Text>
@@ -229,19 +384,25 @@ export default function LocationScreen() {
         ) : (
           <View style={styles.noLocationContainer}>
             <MapPin size={48} color="#64748B" />
-            <Text style={styles.noLocationText}>Location not available</Text>
+            <Text style={styles.noLocationText}>
+              {isLoading ? 'Finding your location...' : 'Location not available'}
+            </Text>
           </View>
         )}
       </View>
 
       <View style={styles.controlsContainer}>
         {!isTracking ? (
-          <TouchableOpacity style={styles.startButton} onPress={startTracking}>
+          <TouchableOpacity 
+            style={[styles.startButton, (isLoading || error) && styles.disabledButton]} 
+            onPress={startLocationTracking}
+            disabled={isLoading || !!error}
+          >
             <Play size={20} color="#FFFFFF" />
-            <Text style={styles.startButtonText}>Start Tracking</Text>
+            <Text style={styles.startButtonText}>Start Continuous Tracking</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.stopButton} onPress={stopTracking}>
+          <TouchableOpacity style={styles.stopButton} onPress={handleStopTracking}>
             <Square size={20} color="#FFFFFF" />
             <Text style={styles.stopButtonText}>Stop Tracking</Text>
           </TouchableOpacity>
@@ -256,9 +417,15 @@ export default function LocationScreen() {
           <Text style={styles.completeButtonText}>Complete Delivery</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.refreshButton} onPress={requestLocationPermission}>
+        <TouchableOpacity 
+          style={[styles.refreshButton, isLoading && styles.disabledButton]} 
+          onPress={getCurrentLocation}
+          disabled={isLoading}
+        >
           <Navigation size={20} color="#2563EB" />
-          <Text style={styles.refreshButtonText}>Refresh Location</Text>
+          <Text style={styles.refreshButtonText}>
+            {isLoading ? 'Getting Location...' : 'Refresh Location'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -309,18 +476,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECACA',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     margin: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+  },
+  errorContent: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 12,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
   },
   errorText: {
     color: '#DC2626',
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    flex: 1,
+    lineHeight: 20,
   },
   retryButton: {
     backgroundColor: '#DC2626',
@@ -409,8 +587,42 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  locationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   locationInfo: {
+    gap: 16,
+  },
+  addressSection: {
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  addressTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  addressText: {
+    fontSize: 16,
+    color: '#2563EB',
+    fontFamily: 'Inter-Medium',
+    lineHeight: 22,
+  },
+  coordinatesSection: {
     gap: 8,
+  },
+  coordinatesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
   },
   coordinateRow: {
     flexDirection: 'row',
@@ -444,6 +656,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontFamily: 'Inter-Regular',
     marginTop: 8,
+    textAlign: 'center',
   },
   controlsContainer: {
     padding: 20,
@@ -513,5 +726,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#94A3B8',
+    borderColor: '#94A3B8',
   },
 });
