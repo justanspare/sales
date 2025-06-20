@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Navigation, Clock, CircleCheck as CheckCircle, Play, Square, Loader, AlertTriangle } from 'lucide-react-native';
+import { MapPin, Navigation, Clock, CircleCheck as CheckCircle, Play, Square, Loader, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import * as Location from 'expo-location';
 
 interface LocationData {
