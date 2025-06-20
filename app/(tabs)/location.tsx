@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Navigation, Clock, CircleCheck as CheckCircle, Play, Square, Loader, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -16,6 +16,8 @@ interface LocationError {
   code: string;
   message: string;
 }
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LocationScreen() {
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -298,6 +300,7 @@ export default function LocationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Fixed Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Location Tracking</Text>
         <View style={[styles.statusIndicator, { backgroundColor: getLocationStatusColor() }]}>
@@ -308,126 +311,138 @@ export default function LocationScreen() {
         </View>
       </View>
 
-      {error && (
-        <View style={styles.errorContainer}>
-          <AlertTriangle size={20} color="#DC2626" />
-          <View style={styles.errorContent}>
-            <Text style={styles.errorTitle}>Location Error</Text>
-            <Text style={styles.errorText}>{error.message}</Text>
+      {/* Scrollable Content */}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        {/* Error Message */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <AlertTriangle size={20} color="#DC2626" />
+            <View style={styles.errorContent}>
+              <Text style={styles.errorTitle}>Location Error</Text>
+              <Text style={styles.errorText}>{error.message}</Text>
+            </View>
+            <TouchableOpacity style={styles.retryButton} onPress={requestLocationPermission}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.retryButton} onPress={requestLocationPermission}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        )}
 
-      <View style={styles.currentTaskCard}>
-        <Text style={styles.cardTitle}>Current Task</Text>
-        <Text style={styles.orderId}>{currentTask.orderId}</Text>
-        <Text style={styles.customerName}>{currentTask.customerName}</Text>
-        <View style={styles.addressContainer}>
-          <MapPin size={16} color="#64748B" />
-          <Text style={styles.address}>{currentTask.address}</Text>
-        </View>
-        
-        <View style={styles.taskTimeInfo}>
-          <View style={styles.timeItem}>
-            <Clock size={16} color="#64748B" />
-            <Text style={styles.timeLabel}>Start Time:</Text>
-            <Text style={styles.timeValue}>{formatTime(currentTask.startTime)}</Text>
+        {/* Current Task Card */}
+        <View style={styles.currentTaskCard}>
+          <Text style={styles.cardTitle}>Current Task</Text>
+          <Text style={styles.orderId}>{currentTask.orderId}</Text>
+          <Text style={styles.customerName}>{currentTask.customerName}</Text>
+          <View style={styles.addressContainer}>
+            <MapPin size={16} color="#64748B" />
+            <Text style={styles.address}>{currentTask.address}</Text>
           </View>
-          <View style={styles.timeItem}>
-            <Clock size={16} color="#2563EB" />
-            <Text style={styles.timeLabel}>Elapsed:</Text>
-            <Text style={styles.timeValue}>{getElapsedTime()}</Text>
+          
+          <View style={styles.taskTimeInfo}>
+            <View style={styles.timeItem}>
+              <Clock size={16} color="#64748B" />
+              <Text style={styles.timeLabel}>Start Time:</Text>
+              <Text style={styles.timeValue}>{formatTime(currentTask.startTime)}</Text>
+            </View>
+            <View style={styles.timeItem}>
+              <Clock size={16} color="#2563EB" />
+              <Text style={styles.timeLabel}>Elapsed:</Text>
+              <Text style={styles.timeValue}>{getElapsedTime()}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.locationCard}>
-        <View style={styles.locationHeader}>
-          <Text style={styles.cardTitle}>Current Location</Text>
-          {isLoading && <Loader size={20} color="#2563EB" />}
-        </View>
-        
-        {location ? (
-          <View style={styles.locationInfo}>
-            {location.address && (
-              <View style={styles.addressSection}>
-                <Text style={styles.addressTitle}>Address</Text>
-                <Text style={styles.addressText}>{location.address}</Text>
-              </View>
-            )}
-            
-            <View style={styles.coordinatesSection}>
-              <Text style={styles.coordinatesTitle}>Coordinates</Text>
-              <View style={styles.coordinateRow}>
-                <Text style={styles.coordinateLabel}>Latitude:</Text>
-                <Text style={styles.coordinateValue}>{location.latitude.toFixed(6)}</Text>
-              </View>
-              <View style={styles.coordinateRow}>
-                <Text style={styles.coordinateLabel}>Longitude:</Text>
-                <Text style={styles.coordinateValue}>{location.longitude.toFixed(6)}</Text>
-              </View>
-              {location.accuracy && (
-                <View style={styles.coordinateRow}>
-                  <Text style={styles.coordinateLabel}>Accuracy:</Text>
-                  <Text style={styles.coordinateValue}>{Math.round(location.accuracy)}m</Text>
+        {/* Location Card */}
+        <View style={styles.locationCard}>
+          <View style={styles.locationHeader}>
+            <Text style={styles.cardTitle}>Current Location</Text>
+            {isLoading && <Loader size={20} color="#2563EB" />}
+          </View>
+          
+          {location ? (
+            <View style={styles.locationInfo}>
+              {location.address && (
+                <View style={styles.addressSection}>
+                  <Text style={styles.addressTitle}>Address</Text>
+                  <Text style={styles.addressText}>{location.address}</Text>
                 </View>
               )}
+              
+              <View style={styles.coordinatesSection}>
+                <Text style={styles.coordinatesTitle}>Coordinates</Text>
+                <View style={styles.coordinateRow}>
+                  <Text style={styles.coordinateLabel}>Latitude:</Text>
+                  <Text style={styles.coordinateValue}>{location.latitude.toFixed(6)}</Text>
+                </View>
+                <View style={styles.coordinateRow}>
+                  <Text style={styles.coordinateLabel}>Longitude:</Text>
+                  <Text style={styles.coordinateValue}>{location.longitude.toFixed(6)}</Text>
+                </View>
+                {location.accuracy && (
+                  <View style={styles.coordinateRow}>
+                    <Text style={styles.coordinateLabel}>Accuracy:</Text>
+                    <Text style={styles.coordinateValue}>{Math.round(location.accuracy)}m</Text>
+                  </View>
+                )}
+              </View>
+              
+              <Text style={styles.lastUpdate}>
+                Last updated: {new Date(location.timestamp).toLocaleTimeString()}
+              </Text>
             </View>
-            
-            <Text style={styles.lastUpdate}>
-              Last updated: {new Date(location.timestamp).toLocaleTimeString()}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.noLocationContainer}>
-            <MapPin size={48} color="#64748B" />
-            <Text style={styles.noLocationText}>
-              {isLoading ? 'Finding your location...' : 'Location not available'}
-            </Text>
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={styles.noLocationContainer}>
+              <MapPin size={48} color="#64748B" />
+              <Text style={styles.noLocationText}>
+                {isLoading ? 'Finding your location...' : 'Location not available'}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      <View style={styles.controlsContainer}>
-        {!isTracking ? (
+        {/* Action Buttons */}
+        <View style={styles.controlsContainer}>
+          {!isTracking ? (
+            <TouchableOpacity 
+              style={[styles.primaryButton, styles.startButton, (isLoading || error) && styles.disabledButton]} 
+              onPress={startLocationTracking}
+              disabled={isLoading || !!error}
+            >
+              <Play size={20} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>Start Continuous Tracking</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[styles.primaryButton, styles.stopButton]} onPress={handleStopTracking}>
+              <Square size={20} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>Stop Tracking</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity 
-            style={[styles.startButton, (isLoading || error) && styles.disabledButton]} 
-            onPress={startLocationTracking}
-            disabled={isLoading || !!error}
+            style={[styles.primaryButton, styles.completeButton, !location && styles.disabledButton]} 
+            onPress={completeDelivery}
+            disabled={!location}
           >
-            <Play size={20} color="#FFFFFF" />
-            <Text style={styles.startButtonText}>Start Continuous Tracking</Text>
+            <CheckCircle size={20} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Complete Delivery</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.stopButton} onPress={handleStopTracking}>
-            <Square size={20} color="#FFFFFF" />
-            <Text style={styles.stopButtonText}>Stop Tracking</Text>
+
+          <TouchableOpacity 
+            style={[styles.secondaryButton, isLoading && styles.disabledButton]} 
+            onPress={getCurrentLocation}
+            disabled={isLoading}
+          >
+            <Navigation size={20} color="#2563EB" />
+            <Text style={styles.secondaryButtonText}>
+              {isLoading ? 'Getting Location...' : 'Refresh Location'}
+            </Text>
           </TouchableOpacity>
-        )}
-
-        <TouchableOpacity 
-          style={[styles.completeButton, !location && styles.disabledButton]} 
-          onPress={completeDelivery}
-          disabled={!location}
-        >
-          <CheckCircle size={20} color="#FFFFFF" />
-          <Text style={styles.completeButtonText}>Complete Delivery</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.refreshButton, isLoading && styles.disabledButton]} 
-          onPress={getCurrentLocation}
-          disabled={isLoading}
-        >
-          <Navigation size={20} color="#2563EB" />
-          <Text style={styles.refreshButtonText}>
-            {isLoading ? 'Getting Location...' : 'Refresh Location'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -441,23 +456,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: screenWidth < 375 ? 20 : 24,
     fontWeight: '700',
     color: '#1E293B',
     fontFamily: 'Inter-Bold',
+    flex: 1,
   },
   statusIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
+    marginLeft: 12,
   },
   statusDot: {
     width: 8,
@@ -467,10 +490,16 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: '#FFFFFF',
     fontFamily: 'Inter-SemiBold',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120, // Extra padding for tab bar
   },
   errorContainer: {
     backgroundColor: '#FEF2F2',
@@ -478,7 +507,8 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     borderRadius: 12,
     padding: 16,
-    margin: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -496,13 +526,13 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#DC2626',
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter-Regular',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   retryButton: {
     backgroundColor: '#DC2626',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
   },
@@ -514,14 +544,15 @@ const styles = StyleSheet.create({
   },
   currentTaskCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
-    margin: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   cardTitle: {
     fontSize: 16,
@@ -546,15 +577,16 @@ const styles = StyleSheet.create({
   },
   addressContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
   address: {
     fontSize: 14,
     color: '#64748B',
     fontFamily: 'Inter-Regular',
-    marginLeft: 6,
+    marginLeft: 8,
     flex: 1,
+    lineHeight: 20,
   },
   taskTimeInfo: {
     gap: 8,
@@ -568,6 +600,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     fontFamily: 'Inter-Regular',
+    minWidth: 80,
   },
   timeValue: {
     fontSize: 14,
@@ -577,15 +610,15 @@ const styles = StyleSheet.create({
   },
   locationCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginTop: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   locationHeader: {
     flexDirection: 'row',
@@ -609,7 +642,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   addressText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#2563EB',
     fontFamily: 'Inter-Medium',
     lineHeight: 22,
@@ -628,6 +661,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 2,
   },
   coordinateLabel: {
     fontSize: 14,
@@ -646,68 +680,54 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
     marginTop: 8,
+    fontStyle: 'italic',
   },
   noLocationContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 32,
   },
   noLocationText: {
     fontSize: 16,
     color: '#64748B',
     fontFamily: 'Inter-Regular',
-    marginTop: 8,
+    marginTop: 12,
     textAlign: 'center',
+    lineHeight: 22,
   },
   controlsContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     gap: 12,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   startButton: {
     backgroundColor: '#10B981',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
   },
   stopButton: {
     backgroundColor: '#EF4444',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  stopButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
   },
   completeButton: {
     backgroundColor: '#2563EB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
   },
-  completeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
-  },
-  refreshButton: {
+  secondaryButton: {
     backgroundColor: '#F8FAFC',
     borderWidth: 2,
     borderColor: '#2563EB',
@@ -718,7 +738,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  refreshButtonText: {
+  secondaryButtonText: {
     color: '#2563EB',
     fontSize: 16,
     fontWeight: '600',
@@ -727,5 +747,7 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#94A3B8',
     borderColor: '#94A3B8',
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });
