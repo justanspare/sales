@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Edit, Phone, Mail, MapPin, Calendar, Camera, Settings, Award, History, X, Check, LogOut } from 'lucide-react-native';
+import { User, CreditCard as Edit, Phone, Mail, MapPin, Calendar, Camera, Settings, Award, History, X, Check, LogOut } from 'lucide-react-native';
 
 interface UserProfile {
   id: string;
