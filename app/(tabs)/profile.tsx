@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, CreditCard as Edit, Phone, Mail, MapPin, Star, Trophy, Calendar, Camera, Settings, Award, History, X, Check } from 'lucide-react-native';
+import { User, CreditCard as Edit, Phone, Mail, MapPin, Star, Trophy, Calendar, Camera, Settings, Award, History, X, Check, LogOut } from 'lucide-react-native';
 
 interface UserProfile {
   id: string;
@@ -35,6 +35,7 @@ const avatarOptions = [
 export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showPerformanceStats, setShowPerformanceStats] = useState(false); // Hidden by default
   const [profile, setProfile] = useState<UserProfile>({
     id: '1',
     name: 'Sarah Johnson',
@@ -93,6 +94,24 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Logged Out', 'You have been successfully logged out.');
+            // Here you would typically handle the logout logic
+          }
+        }
+      ]
+    );
+  };
+
   const StatCard = ({ icon, title, value, subtitle, color, onPress }: {
     icon: React.ReactNode;
     title: string;
@@ -113,6 +132,31 @@ export default function ProfileScreen() {
         </View>
       </View>
     </TouchableOpacity>
+  );
+
+  const EditableField = ({ label, value, onChangeText, placeholder, multiline = false, keyboardType = 'default' }: {
+    label: string;
+    value: string;
+    onChangeText: (text: string) => void;
+    placeholder: string;
+    multiline?: boolean;
+    keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  }) => (
+    <View style={styles.inputGroup}>
+      <View style={styles.inputLabelRow}>
+        <Text style={styles.inputLabel}>{label}</Text>
+        <Edit size={14} color="#2563EB" />
+      </View>
+      <TextInput
+        style={[styles.textInput, multiline && styles.textArea]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        multiline={multiline}
+        numberOfLines={multiline ? 3 : 1}
+        keyboardType={keyboardType}
+      />
+    </View>
   );
 
   const AvatarPickerModal = () => (
@@ -158,12 +202,20 @@ export default function ProfileScreen() {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => setIsEditing(!isEditing)}
-          >
-            <Edit size={20} color="#2563EB" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setIsEditing(!isEditing)}
+            >
+              <Edit size={20} color="#2563EB" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
+              <LogOut size={20} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.profileCard}>
@@ -186,49 +238,36 @@ export default function ProfileScreen() {
           <View style={styles.profileInfo}>
             {isEditing ? (
               <View style={styles.editForm}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Full Name</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editableProfile.name}
-                    onChangeText={(text) => setEditableProfile(prev => ({ ...prev, name: text }))}
-                    placeholder="Enter full name"
-                  />
-                </View>
+                <EditableField
+                  label="Full Name"
+                  value={editableProfile.name}
+                  onChangeText={(text) => setEditableProfile(prev => ({ ...prev, name: text }))}
+                  placeholder="Enter full name"
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Email Address</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editableProfile.email}
-                    onChangeText={(text) => setEditableProfile(prev => ({ ...prev, email: text }))}
-                    placeholder="Enter email address"
-                    keyboardType="email-address"
-                  />
-                </View>
+                <EditableField
+                  label="Email Address"
+                  value={editableProfile.email}
+                  onChangeText={(text) => setEditableProfile(prev => ({ ...prev, email: text }))}
+                  placeholder="Enter email address"
+                  keyboardType="email-address"
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Phone Number</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editableProfile.phone}
-                    onChangeText={(text) => setEditableProfile(prev => ({ ...prev, phone: text }))}
-                    placeholder="Enter phone number"
-                    keyboardType="phone-pad"
-                  />
-                </View>
+                <EditableField
+                  label="Phone Number"
+                  value={editableProfile.phone}
+                  onChangeText={(text) => setEditableProfile(prev => ({ ...prev, phone: text }))}
+                  placeholder="Enter phone number"
+                  keyboardType="phone-pad"
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Address</Text>
-                  <TextInput
-                    style={[styles.textInput, styles.textArea]}
-                    value={editableProfile.address}
-                    onChangeText={(text) => setEditableProfile(prev => ({ ...prev, address: text }))}
-                    placeholder="Enter address"
-                    multiline
-                    numberOfLines={3}
-                  />
-                </View>
+                <EditableField
+                  label="Address"
+                  value={editableProfile.address}
+                  onChangeText={(text) => setEditableProfile(prev => ({ ...prev, address: text }))}
+                  placeholder="Enter address"
+                  multiline
+                />
 
                 <View style={styles.buttonGroup}>
                   <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -249,14 +288,17 @@ export default function ProfileScreen() {
                   <TouchableOpacity style={styles.contactItem}>
                     <Mail size={16} color="#64748B" />
                     <Text style={styles.contactText}>{profile.email}</Text>
+                    <Edit size={12} color="#2563EB" />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.contactItem}>
                     <Phone size={16} color="#64748B" />
                     <Text style={styles.contactText}>{profile.phone}</Text>
+                    <Edit size={12} color="#2563EB" />
                   </TouchableOpacity>
                   <View style={styles.contactItem}>
                     <MapPin size={16} color="#64748B" />
                     <Text style={styles.contactText}>{profile.address}</Text>
+                    <Edit size={12} color="#2563EB" />
                   </View>
                   <View style={styles.contactItem}>
                     <Calendar size={16} color="#64748B" />
@@ -274,54 +316,57 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Performance Statistics</Text>
-          
-          <View style={styles.statsGrid}>
-            <StatCard
-              icon={<Trophy size={20} color="#F59E0B" />}
-              title="Total Deliveries"
-              value={stats.totalDeliveries.toLocaleString()}
-              color="#F59E0B"
-              onPress={handleWorkHistory}
-            />
-            <StatCard
-              icon={<Star size={20} color="#10B981" />}
-              title="Completion Rate"
-              value={`${stats.completionRate}%`}
-              color="#10B981"
-              onPress={handleWorkHistory}
-            />
-            <StatCard
-              icon={<Star size={20} color="#2563EB" />}
-              title="Average Rating"
-              value={stats.averageRating}
-              subtitle="Customer Reviews"
-              color="#2563EB"
-              onPress={handleWorkHistory}
-            />
-            <StatCard
-              icon={<MapPin size={20} color="#8B5CF6" />}
-              title="Distance Traveled"
-              value={`${stats.totalDistance.toLocaleString()} km`}
-              color="#8B5CF6"
-              onPress={handleWorkHistory}
-            />
-          </View>
+        {/* Performance Statistics - Hidden by default */}
+        {showPerformanceStats && (
+          <View style={styles.statsContainer}>
+            <Text style={styles.sectionTitle}>Performance Statistics</Text>
+            
+            <View style={styles.statsGrid}>
+              <StatCard
+                icon={<Trophy size={20} color="#F59E0B" />}
+                title="Total Deliveries"
+                value={stats.totalDeliveries.toLocaleString()}
+                color="#F59E0B"
+                onPress={handleWorkHistory}
+              />
+              <StatCard
+                icon={<Star size={20} color="#10B981" />}
+                title="Completion Rate"
+                value={`${stats.completionRate}%`}
+                color="#10B981"
+                onPress={handleWorkHistory}
+              />
+              <StatCard
+                icon={<Star size={20} color="#2563EB" />}
+                title="Average Rating"
+                value={stats.averageRating}
+                subtitle="Customer Reviews"
+                color="#2563EB"
+                onPress={handleWorkHistory}
+              />
+              <StatCard
+                icon={<MapPin size={20} color="#8B5CF6" />}
+                title="Distance Traveled"
+                value={`${stats.totalDistance.toLocaleString()} km`}
+                color="#8B5CF6"
+                onPress={handleWorkHistory}
+              />
+            </View>
 
-          <TouchableOpacity style={styles.achievementCard} onPress={handleViewAchievements}>
-            <View style={styles.achievementHeader}>
-              <Trophy size={24} color="#F59E0B" />
-              <Text style={styles.achievementTitle}>Best Performance</Text>
-            </View>
-            <Text style={styles.achievementDescription}>
-              Highest completion rate achieved in {stats.bestMonth}
-            </Text>
-            <View style={styles.achievementBadge}>
-              <Text style={styles.achievementBadgeText}>Top Performer</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={styles.achievementCard} onPress={handleViewAchievements}>
+              <View style={styles.achievementHeader}>
+                <Trophy size={24} color="#F59E0B" />
+                <Text style={styles.achievementTitle}>Best Performance</Text>
+              </View>
+              <Text style={styles.achievementDescription}>
+                Highest completion rate achieved in {stats.bestMonth}
+              </Text>
+              <View style={styles.achievementBadge}>
+                <Text style={styles.achievementBadgeText}>Top Performer</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.actionsContainer}>
           <TouchableOpacity style={styles.actionButton} onPress={handleAccountSettings}>
@@ -367,10 +412,19 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     fontFamily: 'Inter-Bold',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   editButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#EFF6FF',
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
   },
   profileCard: {
     backgroundColor: '#FFFFFF',
@@ -457,12 +511,17 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: 16,
   },
+  inputLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: '#374151',
     fontFamily: 'Inter-Medium',
-    marginBottom: 6,
+    flex: 1,
   },
   textInput: {
     borderWidth: 1,

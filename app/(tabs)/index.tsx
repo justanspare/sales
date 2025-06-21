@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Package, Clock, CircleCheck as CheckCircle, TrendingUp, Star, Target, SquareCheck, MapPin, Bell } from 'lucide-react-native';
+import { Package, Clock, CircleCheck as CheckCircle, TrendingUp, Star, Target, SquareCheck, MapPin, Bell, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 interface DashboardStats {
-  totalTasks: number;
+  assignedTasks: number;
   completedTasks: number;
   pendingTasks: number;
   completionRate: number;
@@ -13,9 +13,20 @@ interface DashboardStats {
   rating: number;
 }
 
+interface NewTask {
+  id: string;
+  shopName: string;
+  shopLocation: string;
+  items: Array<{
+    name: string;
+    quantity: string;
+  }>;
+  dueTime: string;
+}
+
 export default function DashboardScreen() {
   const [stats, setStats] = useState<DashboardStats>({
-    totalTasks: 45,
+    assignedTasks: 12,
     completedTasks: 38,
     pendingTasks: 7,
     completionRate: 84,
@@ -24,10 +35,32 @@ export default function DashboardScreen() {
   });
   
   const [refreshing, setRefreshing] = useState(false);
+  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [newTask, setNewTask] = useState<NewTask | null>(null);
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'New task assigned', message: 'Order #12349 ready for pickup', time: '5 min ago' },
     { id: 2, title: 'Delivery completed', message: 'Order #12345 successfully delivered', time: '1 hour ago' },
   ]);
+
+  // Simulate receiving a new task from admin
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const mockNewTask: NewTask = {
+        id: '1',
+        shopName: 'ABC Electronics Store',
+        shopLocation: '123 Main Street, Downtown',
+        items: [
+          { name: 'Laptop', quantity: '2 units' },
+          { name: 'Wireless Mouse', quantity: '5 units' },
+        ],
+        dueTime: '2:00 PM',
+      };
+      setNewTask(mockNewTask);
+      setShowNewTaskModal(true);
+    }, 3000); // Show after 3 seconds for demo
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -35,7 +68,7 @@ export default function DashboardScreen() {
     setTimeout(() => {
       setStats(prev => ({
         ...prev,
-        totalTasks: prev.totalTasks + Math.floor(Math.random() * 3),
+        assignedTasks: prev.assignedTasks + Math.floor(Math.random() * 3),
         completedTasks: prev.completedTasks + Math.floor(Math.random() * 2),
       }));
       setRefreshing(false);
@@ -62,41 +95,8 @@ export default function DashboardScreen() {
     </TouchableOpacity>
   );
 
-  const QuickAction = ({ icon, title, onPress, color }: {
-    icon: React.ReactNode;
-    title: string;
-    onPress: () => void;
-    color: string;
-  }) => (
-    <TouchableOpacity style={styles.quickAction} onPress={onPress}>
-      <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
-        {icon}
-      </View>
-      <Text style={styles.quickActionTitle}>{title}</Text>
-    </TouchableOpacity>
-  );
-
   const handleViewTasks = () => {
-    router.push('/(tabs)/tasks');
-  };
-
-  const handleTrackLocation = () => {
     router.push('/(tabs)/location');
-  };
-
-  const handleNewDelivery = () => {
-    Alert.alert(
-      'New Delivery',
-      'Create a new delivery task?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Create', onPress: () => router.push('/(tabs)/tasks') }
-      ]
-    );
-  };
-
-  const handleReports = () => {
-    Alert.alert('Reports', 'Detailed reports feature coming soon!');
   };
 
   const handleNotifications = () => {
@@ -107,9 +107,83 @@ export default function DashboardScreen() {
     );
   };
 
-  const handleActivityPress = (activity: string) => {
-    Alert.alert('Activity Details', `Details for: ${activity}`);
+  const handleAcceptTask = () => {
+    if (newTask) {
+      setStats(prev => ({
+        ...prev,
+        assignedTasks: prev.assignedTasks + 1,
+      }));
+      Alert.alert('Task Accepted', 'Task has been added to your task list!');
+      setShowNewTaskModal(false);
+      setNewTask(null);
+    }
   };
+
+  const handleRejectTask = () => {
+    Alert.alert('Task Rejected', 'Task has been declined.');
+    setShowNewTaskModal(false);
+    setNewTask(null);
+  };
+
+  const NewTaskModal = () => (
+    <Modal
+      visible={showNewTaskModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowNewTaskModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.newTaskModal}>
+          <View style={styles.newTaskHeader}>
+            <Text style={styles.newTaskTitle}>New Task Assigned</Text>
+            <TouchableOpacity onPress={() => setShowNewTaskModal(false)}>
+              <X size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          
+          {newTask && (
+            <View style={styles.newTaskContent}>
+              <View style={styles.newTaskSection}>
+                <Text style={styles.newTaskSectionTitle}>Shop Details</Text>
+                <Text style={styles.newTaskShopName}>{newTask.shopName}</Text>
+                <View style={styles.newTaskLocationRow}>
+                  <MapPin size={16} color="#64748B" />
+                  <Text style={styles.newTaskLocation}>{newTask.shopLocation}</Text>
+                </View>
+              </View>
+
+              <View style={styles.newTaskSection}>
+                <Text style={styles.newTaskSectionTitle}>Items to Deliver</Text>
+                {newTask.items.map((item, index) => (
+                  <View key={index} style={styles.newTaskItem}>
+                    <Text style={styles.newTaskItemName}>{item.name}</Text>
+                    <Text style={styles.newTaskItemQuantity}>{item.quantity}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.newTaskSection}>
+                <Text style={styles.newTaskSectionTitle}>Due Time</Text>
+                <View style={styles.newTaskTimeRow}>
+                  <Clock size={16} color="#F59E0B" />
+                  <Text style={styles.newTaskDueTime}>{newTask.dueTime}</Text>
+                </View>
+              </View>
+
+              <View style={styles.newTaskActions}>
+                <TouchableOpacity style={styles.rejectButton} onPress={handleRejectTask}>
+                  <Text style={styles.rejectButtonText}>Reject</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptTask}>
+                  <Text style={styles.acceptButtonText}>Accept Task</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,76 +222,17 @@ export default function DashboardScreen() {
           <View style={styles.statsGrid}>
             <StatCard
               icon={<Package size={20} color="#2563EB" />}
-              title="Total Tasks"
-              value={stats.totalTasks}
+              title="Assigned Tasks"
+              value={stats.assignedTasks}
               color="#2563EB"
               onPress={handleViewTasks}
             />
             <StatCard
               icon={<CheckCircle size={20} color="#10B981" />}
-              title="Completed"
+              title="Completed Tasks"
               value={stats.completedTasks}
               color="#10B981"
               onPress={handleViewTasks}
-            />
-            <StatCard
-              icon={<Clock size={20} color="#F59E0B" />}
-              title="Pending"
-              value={stats.pendingTasks}
-              color="#F59E0B"
-              onPress={handleViewTasks}
-            />
-            <StatCard
-              icon={<TrendingUp size={20} color="#8B5CF6" />}
-              title="Completion Rate"
-              value={`${stats.completionRate}%`}
-              color="#8B5CF6"
-              onPress={handleReports}
-            />
-            <StatCard
-              icon={<Target size={20} color="#EF4444" />}
-              title="Avg Delivery Time"
-              value={stats.avgDeliveryTime}
-              color="#EF4444"
-              onPress={handleReports}
-            />
-            <StatCard
-              icon={<Star size={20} color="#F59E0B" />}
-              title="Rating"
-              value={stats.rating}
-              subtitle="Customer Rating"
-              color="#F59E0B"
-              onPress={handleReports}
-            />
-          </View>
-        </View>
-
-        <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <QuickAction
-              icon={<SquareCheck size={24} color="#FFFFFF" />}
-              title="View Tasks"
-              onPress={handleViewTasks}
-              color="#2563EB"
-            />
-            <QuickAction
-              icon={<MapPin size={24} color="#FFFFFF" />}
-              title="Track Location"
-              onPress={handleTrackLocation}
-              color="#10B981"
-            />
-            <QuickAction
-              icon={<Package size={24} color="#FFFFFF" />}
-              title="New Delivery"
-              onPress={handleNewDelivery}
-              color="#F59E0B"
-            />
-            <QuickAction
-              icon={<TrendingUp size={24} color="#FFFFFF" />}
-              title="Reports"
-              onPress={handleReports}
-              color="#8B5CF6"
             />
           </View>
         </View>
@@ -227,7 +242,7 @@ export default function DashboardScreen() {
           <View style={styles.activityCard}>
             <TouchableOpacity 
               style={styles.activityItem}
-              onPress={() => handleActivityPress('Delivery completed - Order #12345')}
+              onPress={() => Alert.alert('Activity Details', 'Delivery completed - Order #12345')}
             >
               <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
               <View style={styles.activityContent}>
@@ -238,7 +253,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.activityItem}
-              onPress={() => handleActivityPress('New task assigned - Order #12346')}
+              onPress={() => Alert.alert('Activity Details', 'New task assigned - Order #12346')}
             >
               <View style={[styles.activityDot, { backgroundColor: '#2563EB' }]} />
               <View style={styles.activityContent}>
@@ -249,7 +264,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.activityItem}
-              onPress={() => handleActivityPress('Task in progress - Order #12344')}
+              onPress={() => Alert.alert('Activity Details', 'Task in progress - Order #12344')}
             >
               <View style={[styles.activityDot, { backgroundColor: '#F59E0B' }]} />
               <View style={styles.activityContent}>
@@ -261,6 +276,8 @@ export default function DashboardScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <NewTaskModal />
     </SafeAreaView>
   );
 }
@@ -384,44 +401,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     marginTop: 4,
   },
-  quickActionsContainer: {
-    padding: 20,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  quickAction: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    width: '48%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  quickActionTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1E293B',
-    fontFamily: 'Inter-Medium',
-    textAlign: 'center',
-  },
   recentActivity: {
     padding: 20,
     paddingBottom: 100,
@@ -473,5 +452,125 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontFamily: 'Inter-Regular',
     marginTop: 4,
+  },
+  // New Task Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  newTaskModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+  },
+  newTaskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  newTaskTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    fontFamily: 'Inter-Bold',
+  },
+  newTaskContent: {
+    padding: 20,
+  },
+  newTaskSection: {
+    marginBottom: 20,
+  },
+  newTaskSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  newTaskShopName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2563EB',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  newTaskLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  newTaskLocation: {
+    fontSize: 14,
+    color: '#64748B',
+    fontFamily: 'Inter-Regular',
+    marginLeft: 8,
+    flex: 1,
+  },
+  newTaskItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  newTaskItemName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1E293B',
+    fontFamily: 'Inter-Medium',
+  },
+  newTaskItemQuantity: {
+    fontSize: 14,
+    color: '#64748B',
+    fontFamily: 'Inter-Regular',
+  },
+  newTaskTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  newTaskDueTime: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F59E0B',
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+  },
+  newTaskActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  rejectButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  acceptButton: {
+    flex: 1,
+    backgroundColor: '#2563EB',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
 });
