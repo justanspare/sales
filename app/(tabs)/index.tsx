@@ -29,6 +29,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [newTask, setNewTask] = useState<NewTask | null>(null);
+  const [showRecentActivity] = useState(false); // Hidden by default
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'New task assigned', message: 'Order #12349 ready for pickup', time: '5 min ago' },
     { id: 2, title: 'Delivery completed', message: 'Order #12345 successfully delivered', time: '1 hour ago' },
@@ -227,44 +228,47 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={styles.recentActivity}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityCard}>
-            <TouchableOpacity 
-              style={styles.activityItem}
-              onPress={() => Alert.alert('Activity Details', 'Delivery completed - Order #12345')}
-            >
-              <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Delivery completed</Text>
-                <Text style={styles.activitySubtitle}>Order #12345 - Downtown Office</Text>
-                <Text style={styles.activityTime}>2 hours ago</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.activityItem}
-              onPress={() => Alert.alert('Activity Details', 'New task assigned - Order #12346')}
-            >
-              <View style={[styles.activityDot, { backgroundColor: '#2563EB' }]} />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>New task assigned</Text>
-                <Text style={styles.activitySubtitle}>Order #12346 - Westside Mall</Text>
-                <Text style={styles.activityTime}>4 hours ago</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.activityItem}
-              onPress={() => Alert.alert('Activity Details', 'Task in progress - Order #12344')}
-            >
-              <View style={[styles.activityDot, { backgroundColor: '#F59E0B' }]} />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Task in progress</Text>
-                <Text style={styles.activitySubtitle}>Order #12344 - City Center</Text>
-                <Text style={styles.activityTime}>6 hours ago</Text>
-              </View>
-            </TouchableOpacity>
+        {/* Recent Activity - Hidden by default */}
+        {showRecentActivity && (
+          <View style={styles.recentActivity}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <View style={styles.activityCard}>
+              <TouchableOpacity 
+                style={styles.activityItem}
+                onPress={() => Alert.alert('Activity Details', 'Delivery completed - Order #12345')}
+              >
+                <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>Delivery completed</Text>
+                  <Text style={styles.activitySubtitle}>Order #12345 - Downtown Office</Text>
+                  <Text style={styles.activityTime}>2 hours ago</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.activityItem}
+                onPress={() => Alert.alert('Activity Details', 'New task assigned - Order #12346')}
+              >
+                <View style={[styles.activityDot, { backgroundColor: '#2563EB' }]} />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>New task assigned</Text>
+                  <Text style={styles.activitySubtitle}>Order #12346 - Westside Mall</Text>
+                  <Text style={styles.activityTime}>4 hours ago</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.activityItem}
+                onPress={() => Alert.alert('Activity Details', 'Task in progress - Order #12344')}
+              >
+                <View style={[styles.activityDot, { backgroundColor: '#F59E0B' }]} />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>Task in progress</Text>
+                  <Text style={styles.activitySubtitle}>Order #12344 - City Center</Text>
+                  <Text style={styles.activityTime}>6 hours ago</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
 
       <NewTaskModal />

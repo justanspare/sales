@@ -2,9 +2,6 @@ import { Tabs } from 'expo-router';
 import { ChartBar as BarChart3, SquareCheck as CheckSquare, User, MapPin } from 'lucide-react-native';
 
 export default function TabLayout() {
-  // Profile mode flag - you can control this based on user role or settings
-  const profileMode = true; // Set to true to hide tasks tab
-
   return (
     <Tabs
       screenOptions={{
@@ -38,18 +35,16 @@ export default function TabLayout() {
           ),
         }}
       />
-      {!profileMode && (
-        <Tabs.Screen
-          name="tasks"
-          options={{
-            title: 'Tasks',
-            tabBarIcon: ({ size, color }) => (
-              <CheckSquare size={size} color={color} />
-            ),
-            tabBarButton: () => null, // Hide the tasks tab
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="tasks"
+        options={{
+          title: 'Tasks',
+          tabBarIcon: ({ size, color }) => (
+            <CheckSquare size={size} color={color} />
+          ),
+          tabBarButton: () => null, // Completely hide the tasks tab
+        }}
+      />
       <Tabs.Screen
         name="location"
         options={{
