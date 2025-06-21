@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Package, Clock, CircleCheck as CheckCircle, TrendingUp, Star, Target, SquareCheck, MapPin, Bell, X } from 'lucide-react-native';
+import { Package, Clock, CircleCheck as CheckCircle, MapPin, Bell, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 interface DashboardStats {
   assignedTasks: number;
   completedTasks: number;
-  pendingTasks: number;
-  completionRate: number;
-  avgDeliveryTime: string;
-  rating: number;
 }
 
 interface NewTask {
@@ -28,10 +24,6 @@ export default function DashboardScreen() {
   const [stats, setStats] = useState<DashboardStats>({
     assignedTasks: 12,
     completedTasks: 38,
-    pendingTasks: 7,
-    completionRate: 84,
-    avgDeliveryTime: '2.3 hrs',
-    rating: 4.8,
   });
   
   const [refreshing, setRefreshing] = useState(false);
@@ -75,11 +67,10 @@ export default function DashboardScreen() {
     }, 1000);
   };
 
-  const StatCard = ({ icon, title, value, subtitle, color, onPress }: {
+  const StatCard = ({ icon, title, value, color, onPress }: {
     icon: React.ReactNode;
     title: string;
     value: string | number;
-    subtitle?: string;
     color: string;
     onPress?: () => void;
   }) => (
@@ -91,7 +82,6 @@ export default function DashboardScreen() {
         <Text style={styles.statTitle}>{title}</Text>
       </View>
       <Text style={styles.statValue}>{value}</Text>
-      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
     </TouchableOpacity>
   );
 
@@ -394,12 +384,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     fontFamily: 'Inter-Bold',
-  },
-  statSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    fontFamily: 'Inter-Regular',
-    marginTop: 4,
   },
   recentActivity: {
     padding: 20,

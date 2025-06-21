@@ -3,7 +3,7 @@ import { ChartBar as BarChart3, SquareCheck as CheckSquare, User, MapPin } from 
 
 export default function TabLayout() {
   // Profile mode flag - you can control this based on user role or settings
-  const profileMode = false; // Set to true to hide tasks tab
+  const profileMode = true; // Set to true to hide tasks tab
 
   return (
     <Tabs

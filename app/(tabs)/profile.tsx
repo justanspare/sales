@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, CreditCard as Edit, Phone, Mail, MapPin, Star, Trophy, Calendar, Camera, Settings, Award, History, X, Check, LogOut } from 'lucide-react-native';
+import { User, CreditCard as Edit, Phone, Mail, MapPin, Calendar, Camera, Settings, Award, History, X, Check, LogOut } from 'lucide-react-native';
 
 interface UserProfile {
   id: string;
@@ -13,14 +13,6 @@ interface UserProfile {
   joinDate: string;
   department: string;
   avatar?: string;
-}
-
-interface ProfileStats {
-  totalDeliveries: number;
-  completionRate: number;
-  averageRating: number;
-  totalDistance: number;
-  bestMonth: string;
 }
 
 const avatarOptions = [
@@ -35,7 +27,7 @@ const avatarOptions = [
 export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-  const [showPerformanceStats, setShowPerformanceStats] = useState(false); // Hidden by default
+  const [showPerformanceStats] = useState(false); // Hidden by default
   const [profile, setProfile] = useState<UserProfile>({
     id: '1',
     name: 'Sarah Johnson',
@@ -49,14 +41,6 @@ export default function ProfileScreen() {
   });
 
   const [editableProfile, setEditableProfile] = useState<UserProfile>(profile);
-
-  const stats: ProfileStats = {
-    totalDeliveries: 1247,
-    completionRate: 96.8,
-    averageRating: 4.8,
-    totalDistance: 12450,
-    bestMonth: 'November 2024',
-  };
 
   const handleSave = () => {
     setProfile(editableProfile);
@@ -111,28 +95,6 @@ export default function ProfileScreen() {
       ]
     );
   };
-
-  const StatCard = ({ icon, title, value, subtitle, color, onPress }: {
-    icon: React.ReactNode;
-    title: string;
-    value: string | number;
-    subtitle?: string;
-    color: string;
-    onPress?: () => void;
-  }) => (
-    <TouchableOpacity style={[styles.statCard, { borderLeftColor: color }]} onPress={onPress}>
-      <View style={styles.statHeader}>
-        <View style={[styles.statIcon, { backgroundColor: color + '15' }]}>
-          {icon}
-        </View>
-        <View style={styles.statContent}>
-          <Text style={styles.statValue}>{value}</Text>
-          <Text style={styles.statTitle}>{title}</Text>
-          {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
 
   const EditableField = ({ label, value, onChangeText, placeholder, multiline = false, keyboardType = 'default' }: {
     label: string;
@@ -319,52 +281,7 @@ export default function ProfileScreen() {
         {/* Performance Statistics - Hidden by default */}
         {showPerformanceStats && (
           <View style={styles.statsContainer}>
-            <Text style={styles.sectionTitle}>Performance Statistics</Text>
-            
-            <View style={styles.statsGrid}>
-              <StatCard
-                icon={<Trophy size={20} color="#F59E0B" />}
-                title="Total Deliveries"
-                value={stats.totalDeliveries.toLocaleString()}
-                color="#F59E0B"
-                onPress={handleWorkHistory}
-              />
-              <StatCard
-                icon={<Star size={20} color="#10B981" />}
-                title="Completion Rate"
-                value={`${stats.completionRate}%`}
-                color="#10B981"
-                onPress={handleWorkHistory}
-              />
-              <StatCard
-                icon={<Star size={20} color="#2563EB" />}
-                title="Average Rating"
-                value={stats.averageRating}
-                subtitle="Customer Reviews"
-                color="#2563EB"
-                onPress={handleWorkHistory}
-              />
-              <StatCard
-                icon={<MapPin size={20} color="#8B5CF6" />}
-                title="Distance Traveled"
-                value={`${stats.totalDistance.toLocaleString()} km`}
-                color="#8B5CF6"
-                onPress={handleWorkHistory}
-              />
-            </View>
-
-            <TouchableOpacity style={styles.achievementCard} onPress={handleViewAchievements}>
-              <View style={styles.achievementHeader}>
-                <Trophy size={24} color="#F59E0B" />
-                <Text style={styles.achievementTitle}>Best Performance</Text>
-              </View>
-              <Text style={styles.achievementDescription}>
-                Highest completion rate achieved in {stats.bestMonth}
-              </Text>
-              <View style={styles.achievementBadge}>
-                <Text style={styles.achievementBadgeText}>Top Performer</Text>
-              </View>
-            </TouchableOpacity>
+            {/* Performance stats content would go here */}
           </View>
         )}
 
@@ -570,103 +487,6 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  statCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    width: '48%',
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  statContent: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-    fontFamily: 'Inter-Bold',
-  },
-  statTitle: {
-    fontSize: 12,
-    color: '#64748B',
-    fontFamily: 'Inter-Medium',
-  },
-  statSubtitle: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontFamily: 'Inter-Regular',
-  },
-  achievementCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  achievementHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  achievementTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    fontFamily: 'Inter-SemiBold',
-    marginLeft: 8,
-  },
-  achievementDescription: {
-    fontSize: 14,
-    color: '#64748B',
-    fontFamily: 'Inter-Regular',
-    marginBottom: 12,
-  },
-  achievementBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    alignSelf: 'flex-start',
-  },
-  achievementBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#92400E',
-    fontFamily: 'Inter-SemiBold',
   },
   actionsContainer: {
     padding: 20,

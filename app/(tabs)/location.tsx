@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Dimensions, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Navigation, Clock, CircleCheck as CheckCircle, Play, Square, Loader, TriangleAlert as AlertTriangle, Plus, X, Trash2 } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -278,6 +278,12 @@ export default function TasksScreen() {
     ));
   };
 
+  const resetForm = () => {
+    setShopName('');
+    setShopLocation('');
+    setItems([{ id: Date.now().toString(), name: '', quantity: '' }]);
+  };
+
   const saveTask = async () => {
     if (!shopName.trim() || !shopLocation.trim()) {
       Alert.alert('Error', 'Please fill in shop name and location.');
@@ -315,12 +321,10 @@ export default function TasksScreen() {
       setCompletedTasks([...completedTasks, completedTask]);
 
       // Reset form
-      setShopName('');
-      setShopLocation('');
-      setItems([{ id: '1', name: '', quantity: '' }]);
+      resetForm();
 
       Alert.alert('Success', 'Task saved successfully and added to completed section!');
-      // Don't close modal - stay in popup as requested
+      // Stay in modal as requested
     } catch (err) {
       console.error('Save task error:', err);
       Alert.alert('Error', 'Failed to get GPS location. Please try again.');
@@ -346,79 +350,98 @@ export default function TasksScreen() {
       visible={showAddTaskModal}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={() => setShowAddTaskModal(false)}
+      onRequestClose={() => {
+        resetForm();
+        setShowAddTaskModal(false);
+      }}
     >
       <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Add New Task</Text>
-          <TouchableOpacity 
-            style={styles.closeButton}
-            onPress={() => setShowAddTaskModal(false)}
-          >
-            <X size={24} color="#64748B" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.modalContent}>
-          <View style={styles.formSection}>
-            <Text style={styles.formLabel}>Shop Name</Text>
-            <TextInput
-              style={styles.formInput}
-              value={shopName}
-              onChangeText={setShopName}
-              placeholder="Enter shop name"
-            />
-          </View>
-
-          <View style={styles.formSection}>
-            <Text style={styles.formLabel}>Shop Location</Text>
-            <TextInput
-              style={styles.formInput}
-              value={shopLocation}
-              onChangeText={setShopLocation}
-              placeholder="Enter shop location"
-            />
-          </View>
-
-          <View style={styles.formSection}>
-            <Text style={styles.formLabel}>Add Items</Text>
-            {items.map((item, index) => (
-              <View key={item.id} style={styles.itemRow}>
-                <View style={styles.itemInputs}>
-                  <TextInput
-                    style={[styles.formInput, styles.itemNameInput]}
-                    value={item.name}
-                    onChangeText={(value) => updateItem(item.id, 'name', value)}
-                    placeholder="Item name"
-                  />
-                  <TextInput
-                    style={[styles.formInput, styles.itemQuantityInput]}
-                    value={item.quantity}
-                    onChangeText={(value) => updateItem(item.id, 'quantity', value)}
-                    placeholder="Quantity (e.g., 13kg)"
-                  />
-                </View>
-                {items.length > 1 && (
-                  <TouchableOpacity 
-                    style={styles.removeItemButton}
-                    onPress={() => removeItem(item.id)}
-                  >
-                    <Trash2 size={20} color="#EF4444" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-            
-            <TouchableOpacity style={styles.addItemButton} onPress={addItem}>
-              <Plus size={20} color="#2563EB" />
-              <Text style={styles.addItemButtonText}>Add Item</Text>
+        <KeyboardAvoidingView 
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add New Task</Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => {
+                resetForm();
+                setShowAddTaskModal(false);
+              }}
+            >
+              <X size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.saveTaskButton} onPress={saveTask}>
-            <Text style={styles.saveTaskButtonText}>Save Task</Text>
-          </TouchableOpacity>
-        </ScrollView>
+          <ScrollView 
+            style={styles.modalContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.formSection}>
+              <Text style={styles.formLabel}>Shop Name</Text>
+              <TextInput
+                style={styles.formInput}
+                value={shopName}
+                onChangeText={setShopName}
+                placeholder="Enter shop name"
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={styles.formLabel}>Shop Location</Text>
+              <TextInput
+                style={styles.formInput}
+                value={shopLocation}
+                onChangeText={setShopLocation}
+                placeholder="Enter shop location"
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={styles.formLabel}>Add Items</Text>
+              {items.map((item, index) => (
+                <View key={item.id} style={styles.itemRow}>
+                  <View style={styles.itemInputs}>
+                    <TextInput
+                      style={[styles.formInput, styles.itemNameInput]}
+                      value={item.name}
+                      onChangeText={(value) => updateItem(item.id, 'name', value)}
+                      placeholder="Item name"
+                      returnKeyType="next"
+                    />
+                    <TextInput
+                      style={[styles.formInput, styles.itemQuantityInput]}
+                      value={item.quantity}
+                      onChangeText={(value) => updateItem(item.id, 'quantity', value)}
+                      placeholder="Quantity (e.g., 13kg)"
+                      returnKeyType={index === items.length - 1 ? 'done' : 'next'}
+                    />
+                  </View>
+                  {items.length > 1 && (
+                    <TouchableOpacity 
+                      style={styles.removeItemButton}
+                      onPress={() => removeItem(item.id)}
+                    >
+                      <Trash2 size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              
+              <TouchableOpacity style={styles.addItemButton} onPress={addItem}>
+                <Plus size={20} color="#2563EB" />
+                <Text style={styles.addItemButtonText}>Add Item</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.saveTaskButton} onPress={saveTask}>
+              <Text style={styles.saveTaskButtonText}>Save Task</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
